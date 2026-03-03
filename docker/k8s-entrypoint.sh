@@ -5,13 +5,13 @@ RIAK_CONF=/opt/riak/etc/riak.conf
 RIAK_SUBDOMAIN=riak-headless
 
 # Data from configMap goes into config file...
-if ! [ -z "$RIAK_INITIAL_CONF_DATA"]; then
+if ! [ -z "$RIAK_CONF_INITIAL_DATA" ]; then
   echo "Updated riak conf"
   echo "$RIAK_CONF_INITIAL_DATA" > $RIAK_CONF
 fi
 
 # Custom riak host name
-if ! [ -z "$POD_NAME"]; then
+if ! [ -z "$POD_NAME" ]; then
   RIAK_ID="${POD_NAME}.${RIAK_SUBDOMAIN}"
   sed -i.k8sbak -e "s/riak@127.0.0.1/riak@${RIAK_ID}/" $RIAK_CONF
 fi
@@ -73,15 +73,18 @@ join_cluster() {
 }
 
 # Try to join cluster
-while ! join_cluster; then
+while ! join_cluster; do
   echo "Couldn't join cluster, sleeping..."
   sleep 30
-fi
+done
 
 # Keep alive and periodically log cluster status
 while true; do
   echo -n "sleeping..."
   sleep 30
+  if ! riak ping; then
+    echo "$(date): riak ping failed!"
+  fi
   echo "$(date): cluster status:"
   riak-admin cluster status
 done
