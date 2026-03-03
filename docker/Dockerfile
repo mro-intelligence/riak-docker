@@ -44,10 +44,8 @@ EXPOSE 8087 8098
 
 WORKDIR /opt/riak
 
-# Copy and set up entrypoint scripts
-COPY riak-entrypoint.sh /usr/local/bin/
+# Copy and set up entrypoint script
 COPY k8s-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/riak-entrypoint.sh /usr/local/bin/k8s-entrypoint.sh
+RUN chmod +x /usr/local/bin/k8s-entrypoint.sh
 
-ENTRYPOINT ["/usr/local/bin/riak-entrypoint.sh"]
-CMD ["foreground"]
+ENTRYPOINT ["/usr/local/bin/k8s-entrypoint.sh"]

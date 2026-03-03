@@ -5,11 +5,16 @@ RIAK_CONF=/opt/riak/etc/riak.conf
 RIAK_SUBDOMAIN=riak-headless
 
 # Data from configMap goes into config file...
-echo "$RIAK_CONF_INITIAL_DATA" > $RIAK_CONF
+if ! [ -z "$RIAK_INITIAL_CONF_DATA"]; then
+  echo "Updated riak conf"
+  echo "$RIAK_CONF_INITIAL_DATA" > $RIAK_CONF
+fi
 
 # Custom riak host name
-RIAK_ID="${POD_NAME}.${RIAK_SUBDOMAIN}"
-sed -i.k8sbak -e "s/riak@127.0.0.1/riak@${RIAK_ID}/" $RIAK_CONF
+if ! [ -z "$POD_NAME"]; then
+  RIAK_ID="${POD_NAME}.${RIAK_SUBDOMAIN}"
+  sed -i.k8sbak -e "s/riak@127.0.0.1/riak@${RIAK_ID}/" $RIAK_CONF
+fi
 
 # Start riak
 riak daemon
@@ -39,13 +44,20 @@ if [ "$member_status" = "leaving" ]; then
 fi
 
 join_cluster() {
+  if [ -z "$POD_NAME" ]; then
+    echo POD_NAME not set, assume this is not K8S and no cluster
+    return 0
+  fi
   local base_host=${POD_NAME%%-*}  # extract stateful set name
-  for i in $(seq 0 0); do  # 
-    if [ "$base_host-$i" = "$POD_NAME" ]; then
-      continue
-    fi
+  # Should really just join node 0 but if down maybe ok to join other nodes.
+  # Theres no proof that this cluster join algorithm will work.
+  for i in $(seq 0 2); do
     local try_host=$base_host-$i.${RIAK_SUBDOMAIN}
     echo "Trying to join cluster: $try_host"
+    if [ "$base_host-$i" = "$POD_NAME" ]; then
+      echo "I am $try_host, so not trying to join"
+      return 0
+    fi
     if ! grep error <(riak-admin cluster join "riak@$try_host"); then
       echo "Joined cluster"
       if riak-admin cluster plan && riak-admin cluster commit; then
@@ -61,10 +73,9 @@ join_cluster() {
 }
 
 # Try to join cluster
-if join_cluster; then
-  echo "Successfully joined and committed to cluster"
-else
-  echo "This host did not join the cluster at startup"
+while ! join_cluster; then
+  echo "Couldn't join cluster, sleeping..."
+  sleep 30
 fi
 
 # Keep alive and periodically log cluster status

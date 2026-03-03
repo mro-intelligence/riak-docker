@@ -88,8 +88,6 @@ spec:
         - name: riak
           #image: ghcr.io/gosub2k/riak-docker:main
           image: localhost:30500/bangriak
-          command: ["/usr/local/bin/k8s-entrypoint.sh"]
- 
           env:
             - name: RIAK_CONF_INITIAL_DATA
               valueFrom:
