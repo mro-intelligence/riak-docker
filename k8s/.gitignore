@@ -1,3 +1,4 @@
 BUILD.sh
 teardown.sh
 dev-deploy.sh
+TEARDOWN.sh
